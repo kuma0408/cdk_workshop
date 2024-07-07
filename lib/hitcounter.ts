@@ -6,6 +6,7 @@ import { threadId } from 'worker_threads';
 
 export interface HitCounterProps {
     downstream: lambda.IFunction;
+    readCapacity?: number;
 }
 
 export class HitCounter extends Construct {
@@ -17,6 +18,9 @@ export class HitCounter extends Construct {
     public readonly table: dynamodb.Table;
 
     constructor(scope: Construct, id: string, props: HitCounterProps) {
+        if (props.readCapacity !== undefined && (props.readCapacity < 5 || props.readCapacity > 20)) {
+            throw new Error('readCapacity must be greater than 5 and less than 20')
+        }
         super(scope, id);
 
         const table = new dynamodb.Table(this, 'Hits', {
@@ -24,7 +28,9 @@ export class HitCounter extends Construct {
                 name: 'path',
                 type: dynamodb.AttributeType.STRING
             },
-            removalPolicy: cdk.RemovalPolicy.DESTROY
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            readCapacity: props.readCapacity ?? 5
         });
         this.table = table;
 
